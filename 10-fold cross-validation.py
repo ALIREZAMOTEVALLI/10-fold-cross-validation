@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
 import matplotlib.animation as animation
+import webbrowser
+import os
 
 # -------------------- Config --------------------
 N_SPLITS = 10
@@ -18,9 +20,11 @@ plt.rcParams.update({
 HORIZON_COLORS = {'A': 'red', 'B': 'green', 'C': 'orange'}
 REGIONS = ['all', '1', '2', '3', '4', '5']
 
+
 # -------------------- Helpers --------------------
 def mean_bias_error(y_true, y_pred):
     return np.mean(y_pred - y_true)
+
 
 def make_synth_dataset(horizon, n=SAMPLE_ROWS):
     if horizon == 'A':
@@ -33,6 +37,7 @@ def make_synth_dataset(horizon, n=SAMPLE_ROWS):
     pred = clay + np.random.normal(bias, sigma_pred, n)
     return pd.DataFrame({'clay': clay, 'clay_1': pred})
 
+
 def kfold_metrics(df, n_splits=N_SPLITS):
     y_true = df['clay'].values
     y_pred = df['clay_1'].values
@@ -43,6 +48,7 @@ def kfold_metrics(df, n_splits=N_SPLITS):
         rmse.append(np.sqrt(mean_squared_error(yt, yp)))
         mbe.append(mean_bias_error(yt, yp))
     return rmse, mbe
+
 
 # -------------------- Build synthetic data --------------------
 names = []
@@ -64,32 +70,32 @@ for (hz, rg), df in zip(names, dataframes):
 # -------------------- Animation --------------------
 fig, axs = plt.subplots(1, 2, figsize=(18, 7))
 
+
 def update(num):
     axs[0].clear()
     axs[1].clear()
-    
-    # Plot up to num+1 datasets
-    box_rmse = axs[0].boxplot(rmse_data[:num+1], patch_artist=True, showmeans=False)
-    for patch, hz in zip(box_rmse['boxes'], horizons_for_boxes[:num+1]):
+
+    box_rmse = axs[0].boxplot(rmse_data[:num + 1], patch_artist=True, showmeans=False)
+    for patch, hz in zip(box_rmse['boxes'], horizons_for_boxes[:num + 1]):
         patch.set_facecolor(HORIZON_COLORS.get(hz, 'lightgray'))
         patch.set_edgecolor('black')
         patch.set_linewidth(1.2)
     axs[0].set_title('RMSE (10-fold CV)')
     axs[0].set_ylabel('RMSE (%)')
     axs[0].set_xlabel('Geo-region')
-    axs[0].set_xticks(range(1, len(x_labels[:num+1])+1))
-    axs[0].set_xticklabels(x_labels[:num+1], rotation=90)
+    axs[0].set_xticks(range(1, len(x_labels[:num + 1]) + 1))
+    axs[0].set_xticklabels(x_labels[:num + 1], rotation=90)
 
-    box_mbe = axs[1].boxplot(mbe_data[:num+1], patch_artist=True, showmeans=False)
-    for patch, hz in zip(box_mbe['boxes'], horizons_for_boxes[:num+1]):
+    box_mbe = axs[1].boxplot(mbe_data[:num + 1], patch_artist=True, showmeans=False)
+    for patch, hz in zip(box_mbe['boxes'], horizons_for_boxes[:num + 1]):
         patch.set_facecolor(HORIZON_COLORS.get(hz, 'lightgray'))
         patch.set_edgecolor('black')
         patch.set_linewidth(1.2)
     axs[1].set_title('MBE (10-fold CV)')
     axs[1].set_ylabel('MBE (%)')
     axs[1].set_xlabel('Geo-region')
-    axs[1].set_xticks(range(1, len(x_labels[:num+1])+1))
-    axs[1].set_xticklabels(x_labels[:num+1], rotation=90)
+    axs[1].set_xticks(range(1, len(x_labels[:num + 1]) + 1))
+    axs[1].set_xticklabels(x_labels[:num + 1], rotation=90)
 
     for ax in axs:
         for s in ax.spines.values():
@@ -102,6 +108,7 @@ def update(num):
         for h, c in HORIZON_COLORS.items()
     ]
     axs[0].legend(handles=legend_handles, title='Horizon', loc='upper left')
+
 
 ani = animation.FuncAnimation(fig, update, frames=len(names), interval=500, repeat=False)
 ani.save('kfold_validation.gif', writer='pillow')
@@ -116,4 +123,10 @@ summary_df = pd.DataFrame({
     'MBE_std(%)': [np.std(m, ddof=1) for m in mbe_data],
 })
 summary_df.to_excel('validation_summary_10fold_example.xlsx', index=False)
+
+# -------------------- Automatically open GIF --------------------
+gif_path = os.path.abspath('kfold_validation.gif')
+webbrowser.open(f'file://{gif_path}')
+
 print("✅ Saved: kfold_validation.gif, validation_summary_10fold_example.xlsx")
+print("✅ GIF opened in default viewer")
